@@ -1,6 +1,6 @@
-﻿/* =========================================================
+/* =========================================================
    نظام إدارة السنتر — app.js
-   مزامنة تلقائية مع Firebase: أي تعديل بيتحفظ سحابيًا لوحده
+   Firebase Auth + مزامنة سحابية تلقائية + كل الميزات
    ========================================================= */
 
 /* ========== 1) أدوات عامة ========== */
@@ -17,12 +17,10 @@ var PAY_CAP = 150;
 var ATT_CAP = 400;
 var HOME_CAP = 50;
 var TITLES = {home:'الرئيسية',reg:'تسجيل طالب جديد',attend:'الحضور والغياب',students:'الطلاب',pay:'الدفع',treasury:'الخزنة',expenses:'المصروفات',assistants:'الاسيستنت',exams:'الامتحانات والدرجات'};
-
 var monthKey = function(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1); };
 var dateKey  = function(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
 var TODAY = dateKey(new Date());
 var CUR_MONTH = monthKey(new Date());
-
 function toLatin(s){
   return String(s)
     .replace(/[٠-٩]/g, function(d){ return String(d.charCodeAt(0)-1632); })
@@ -46,7 +44,6 @@ var fbAuth=null, fbStore=null, FB_READY=false, CU=null;
 var SESSION_TOKEN='tk'+Date.now()+Math.random().toString(36).slice(2);
 var CHUNK=800000;
 var pushTimer=null, liveUnsub=null, applyingRemote=false, lastCloudTs=0;
-
 function initFirebase(){
   if(typeof firebase==='undefined' || typeof FB_CONFIG==='undefined' || !FB_CONFIG || !FB_CONFIG.apiKey || FB_CONFIG.apiKey.indexOf('PASTE')===0){
     setCloudStatus('وضع محلي — مفيش ربط سحابي');
@@ -60,8 +57,6 @@ function initFirebase(){
   }catch(e){ setCloudStatus('تعذر الاتصال: '+e.message); return false; }
 }
 function setCloudStatus(t){ var el=$('cloudStatus'); if(el) el.textContent=t; }
-
-/* رفع تلقائي: أي save() بيعدّي هنا بعد 1.5 ثانية */
 function cloudPush(){
   if(!FB_READY||!CU||CU.uid==='local'||applyingRemote) return Promise.resolve();
   var json=JSON.stringify(db);
@@ -77,9 +72,7 @@ function cloudPush(){
     });
   }).then(function(){
     setCloudStatus('محفوظ سحابيًا ✅ '+new Date().toLocaleTimeString('en-GB'));
-  }).catch(function(e){
-    setCloudStatus('تعذر الحفظ السحابي: '+e.message);
-  });
+  }).catch(function(e){ setCloudStatus('تعذر الحفظ السحابي: '+e.message); });
 }
 function schedulePush(){
   if(!FB_READY||!CU||CU.uid==='local'||applyingRemote) return;
@@ -112,7 +105,6 @@ function cloudPull(force){
     });
   }).catch(function(e){ setCloudStatus('تعذر السحب: '+e.message); });
 }
-/* استماع لحظي: لو جهاز تاني رفع تعديل، بنسحبه لوحده */
 function startLiveSync(){
   if(!FB_READY||!CU||CU.uid==='local'||liveUnsub) return;
   liveUnsub=fbStore.collection('backups').doc('center').onSnapshot(function(snap){
@@ -150,7 +142,7 @@ function save(){
   db._meta=db._meta||{}; db._meta.savedAt=Date.now();
   lsSet(LS,JSON.stringify(db));
   buildIndexes();
-  schedulePush(); /* ← هنا السحر: أي حفظ بيترفع سحابيًا تلقائيًا */
+  schedulePush();
 }
 function seed(){
   return { settings:{centerName:'سنتر مستر اشرف عبدالحليم',teacherName:'مستر اشرف عبدالحليم',monthlyPrice:300,p1:300,p2:350,p3:400,whatsappNumber:'',weak:50,top:85},
@@ -163,7 +155,6 @@ function load(){
   db.groups=db.groups||[]; db.counters=db.counters||{receipt:0};
   migrateGroups();
   db.students.forEach(function(s){ if(!s.startDate) s.startDate=(s.startMonth||CUR_MONTH)+'-01'; });
-  autoUnfreeze();
   buildIndexes();
 }
 function migrateGroups(){
@@ -197,13 +188,13 @@ function cycleInfo(st){
   if(now.getDate()<start.getDate()) months--;
   if(months<0) months=0;
   var cStart=addMonthsDate(start,months), cEnd=addDaysDate(addMonthsDate(start,months+1),-1);
-  return {index:months,start:cStart,end:cEnd,key:dateKey(cStart)};
+  return {index:months, start:cStart, end:cEnd, key:dateKey(cStart)};
 }
 function priceFor(st){ var s=db.settings; if(st.year==='1')return +s.p1||0; if(st.year==='2')return +s.p2||0; if(st.year==='3')return +s.p3||0; return +s.monthlyPrice||0; }
 function sumPaid(s){ return IDX.paidSum[s.id]||0; }
 function calcRemaining(s){ return (s.remainingAmount||0)+cycleInfo(s).index*priceFor(s)-sumPaid(s); }
-function cyclePayTx(s){ return IDX.txBySP[s.id+'|'+cycleInfo(s).key]||null; }
 function paidCurrentCycle(s){ if(IDX.paidPeriod[s.id+'|'+cycleInfo(s).key]) return true; return calcRemaining(s)<=0.0001; }
+function cyclePayTx(s){ return IDX.txBySP[s.id+'|'+cycleInfo(s).key]||null; }
 function attendedInCycle(s){ var ci=cycleInfo(s),a=dateKey(ci.start),b=dateKey(ci.end),n=0; Object.keys(db.attendance).forEach(function(d){ if(d>=a&&d<=b&&db.attendance[d][s.id])n++; }); return n; }
 function inFreeze(s,date){ return s.freezeFrom&&date>=s.freezeFrom&&date<=(s.freezeTo||'9999-12-31'); }
 function calcAbsence(s){
@@ -302,8 +293,60 @@ $('btnReg').onclick=function(){
   save();
   ['rgName','rgCode','rgSchool','rgPaid','rgRemain','rgPhone','rgParent','rgNotes'].forEach(function(id){$(id).value='';});
   $('rgYear').value=''; $('rgType').value=''; $('rgGroup').value=''; $('rgStart').value=TODAY;
+  rgRemainManual=false; updateRgHint();
   renderAll(); toast('تم تسجيل الطالب: '+name);
 };
+
+/* ========== 8.5) السعر التلقائي حسب السنة ========== */
+function priceForYear(y){
+  var s=db.settings;
+  if(y==='1') return (+s.p1||0);
+  if(y==='2') return (+s.p2||0);
+  if(y==='3') return (+s.p3||0);
+  return (+s.monthlyPrice||0);
+}
+function yearName(y){ return y==='1'?'أولى':(y==='2'?'تانية':(y==='3'?'تالتة':'')); }
+function priceHintEl(selEl,id){
+  var el=document.getElementById(id);
+  if(!el){
+    el=document.createElement('div');
+    el.id=id; el.className='muted';
+    el.style.marginTop='4px'; el.style.fontWeight='700'; el.style.color='var(--p)';
+    selEl.parentNode.insertBefore(el, selEl.nextSibling);
+  }
+  return el;
+}
+function updateRgHint(){
+  var y=$('rgYear').value, el=priceHintEl($('rgYear'),'rgPriceHint');
+  el.textContent = y ? ('سعر الشهر لسنة '+yearName(y)+': '+money(priceForYear(y))) : '';
+}
+function updateEdHint(){
+  var y=$('edYear').value, el=priceHintEl($('edYear'),'edPriceHint');
+  el.textContent = y ? ('سعر الشهر لسنة '+yearName(y)+': '+money(priceForYear(y))) : '';
+}
+var rgRemainManual=false;
+$('rgRemain').addEventListener('input', function(){ rgRemainManual=true; });
+$('rgYear').addEventListener('change', function(){
+  rgRemainManual=false;
+  updateRgHint();
+  var y=this.value; if(!y) return;
+  var p=priceForYear(y);
+  var paid=+toLatin($('rgPaid').value)||0;
+  $('rgRemain').value=Math.max(0,p-paid);
+  toast('سعر شهر '+yearName(y)+' = '+money(p)+' — المتبقي اتحدد تلقائيًا');
+});
+$('rgPaid').addEventListener('input', function(){
+  var y=$('rgYear').value;
+  if(!y||rgRemainManual) return;
+  var p=priceForYear(y);
+  var paid=+toLatin(this.value)||0;
+  $('rgRemain').value=Math.max(0,p-paid);
+});
+$('edYear').addEventListener('change', function(){
+  updateEdHint();
+  var y=this.value;
+  if(y) toast('سعر الشهر لسنة '+yearName(y)+': '+money(priceForYear(y))+' — المتبقي الفعلي متغيرش');
+});
 
 /* ========== 9) الحضور والغياب ========== */
 $('atDate').value=TODAY;
@@ -377,7 +420,7 @@ $('btnWaAbsent').onclick=function(){
   $('mWa').classList.add('show');
 };
 
-/* ========== 10) الطلاب (ترقيم صفحات) ========== */
+/* ========== 10) الطلاب + ترقيم صفحات ========== */
 var stuPage=0;
 $('stSearch').addEventListener('input', debounce(function(){ stuPage=0; renderStudents(); },200));
 $('stYearFilter').onchange=function(){ stuPage=0; renderStudents(); };
@@ -448,6 +491,7 @@ function openEdit(id){
   $('edSchool').value=s.school||''; $('edPhone').value=s.phone||''; $('edParent').value=s.parentPhone||'';
   $('edNotes').value=s.notes||''; $('edStatus').value=s.status||'active';
   $('edFreezeFrom').value=s.freezeFrom||''; $('edFreezeTo').value=s.freezeTo||'';
+  updateEdHint();
   $('mEdit').classList.add('show');
 }
 $('btnSaveEdit').onclick=function(){
@@ -719,7 +763,7 @@ function refreshGroupSelects(){
   $('rgGroup').innerHTML=groupOptions($('rgGroup').value||'');
 }
 
-/* ========== 18) الامتحانات ========== */
+/* ========== 18) الامتحانات + حذف امتحان ========== */
 $('emDate').value=TODAY;
 $('btnAddExam').onclick=function(){
   var t=$('emTitle').value.trim(); if(!t){toast('اكتب اسم الامتحان');return;}
@@ -754,6 +798,35 @@ $('btnSaveGrades').onclick=function(){
   });
   db.examGrades[eid]=g; save(); renderExamStats(); toast('تم حفظ الدرجات');
 };
+/* زر حذف الامتحان — بيتزرع لوحده جنب قائمة الاختيار */
+(function(){
+  var sel=$('emSelect'); if(!sel) return;
+  var btn=document.getElementById('btnDelExam');
+  if(!btn){
+    btn=document.createElement('button');
+    btn.id='btnDelExam'; btn.type='button';
+    btn.className='btn danger'; btn.style.alignSelf='flex-end';
+    btn.innerHTML=ic('trash','sm')+' حذف الامتحان';
+    sel.parentNode.insertBefore(btn, sel.nextSibling);
+  }
+  function refreshState(){ btn.disabled=!sel.value; }
+  btn.onclick=function(){
+    var eid=sel.value;
+    if(!eid){ toast('اختار الامتحان اللي عايز تحذفه الأول'); return; }
+    var em=db.exams.find(function(e){ return e.id===eid; });
+    if(!em) return;
+    if(!confirm('هتحذف امتحان "'+em.title+'" وكل درجاته (بما فيها درجات اللي اتسجلت من شاشة الحضور). متأكد؟')) return;
+    db.exams=db.exams.filter(function(e){ return e.id!==eid; });
+    if(db.examGrades[eid]) delete db.examGrades[eid];
+    save();
+    renderExams(); renderExamGrades(); refreshExamOptions(); refreshState();
+    toast('تم حذف الامتحان: '+em.title);
+  };
+  sel.addEventListener('change', refreshState);
+  var _renderExamsOrig=renderExams;
+  renderExams=function(){ _renderExamsOrig(); refreshState(); };
+  refreshState();
+})();
 function renderExamStats(){
   var weak=db.settings.weak||50, top=db.settings.top||85;
   var rows=db.students.map(function(s){
@@ -947,7 +1020,6 @@ $('btnSaveSettings').onclick=function(){
 };
 $('btnCloudPush').onclick=function(){ cloudPush(); };
 $('btnCloudPull').onclick=function(){ cloudPull(true).then(function(c){ if(c) toast('تم السحب من السحاب'); }); };
-
 function arAuthErr(c){
   if(c==='auth/invalid-credential'||c==='auth/wrong-password') return 'بيانات الدخول غلط.';
   if(c==='auth/user-not-found') return 'مفيش مستخدم بالإيميل ده — ضيفه من كونصول Firebase.';
@@ -988,7 +1060,6 @@ $('btnLogout').onclick=function(){
   if(FB_READY&&CU&&CU.uid!=='local'){ cloudPush().then(function(){ fbAuth.signOut(); }); }
   else { CU=null; showLogin(!FB_READY); }
 };
-
 function renderAll(){
   autoUnfreeze();
   buildIndexes();
@@ -1002,124 +1073,14 @@ window.addEventListener('error', function(e){
   var d=document.getElementById('errbar');
   if(d){ d.textContent='JS Error: '+msg+' (line '+e.lineno+')'; d.classList.add('show'); }
 });
-
-/* إتاحة الدوال للي بيتنادى عليها من onclick */
+/* إتاحة الدوال اللي بتتنادى من onclick جوّه الـ HTML */
 window.undoAttend=undoAttend; window.openEdit=openEdit; window.openProfile=openProfile;
 window.setSesScore=setSesScore; window.setSesNotes=setSesNotes; window.delSession=delSession;
 window.delStudent=delStudent; window.payNow=payNow; window.editPay=editPay; window.undoPay=undoPay;
 window.printReceipt=printReceipt; window.printStatement=printStatement; window.delTr=delTr;
 window.editAs=editAs; window.delAs=delAs; window.editGroup=editGroup; window.delGroup=delGroup;
 window.payMore=payMore;
-
 /* بدء التشغيل */
 fillDaySelects();
-bootAuth();
-/* ========== 23) تحديد سعر الشهر تلقائيًا حسب السنة ========== */
-function priceForYear(y){
-  var s=db.settings;
-  if(y==='1') return (+s.p1||0);
-  if(y==='2') return (+s.p2||0);
-  if(y==='3') return (+s.p3||0);
-  return (+s.monthlyPrice||0);
-}
-function yearName(y){ return y==='1'?'أولى':(y==='2'?'تانية':(y==='3'?'تالتة':'')); }
-function priceHintEl(selEl, id){
-  var el=document.getElementById(id);
-  if(!el){
-    el=document.createElement('div');
-    el.id=id; el.className='muted';
-    el.style.marginTop='4px'; el.style.fontWeight='700'; el.style.color='var(--p)';
-    selEl.parentNode.insertBefore(el, selEl.nextSibling);
-  }
-  return el;
-}
-function updateRgHint(){
-  var y=$('rgYear').value, el=priceHintEl($('rgYear'),'rgPriceHint');
-  el.textContent = y ? ('سعر الشهر لسنة '+yearName(y)+': '+money(priceForYear(y))) : '';
-}
-function updateEdHint(){
-  var y=$('edYear').value, el=priceHintEl($('edYear'),'edPriceHint');
-  el.textContent = y ? ('سعر الشهر لسنة '+yearName(y)+': '+money(priceForYear(y))) : '';
-}
-
-var rgRemainManual=false;
-/* لو عدّل المتبقي بإيده، مبطلناش نلغبطه */
-$('rgRemain').addEventListener('input', function(){ rgRemainManual=true; });
-
-/* أول ما يختار السنة: المتبقي = سعر شهر السنة دي − اللي دفعه */
-$('rgYear').addEventListener('change', function(){
-  rgRemainManual=false;
-  updateRgHint();
-  var y=this.value; if(!y) return;
-  var p=priceForYear(y);
-  var paid=+toLatin($('rgPaid').value)||0;
-  var rem=Math.max(0,p-paid);
-  $('rgRemain').value=rem;
-  toast('سعر شهر '+yearName(y)+' = '+money(p)+' — المتبقي اتحدد تلقائيًا');
-});
-
-/* لو كتب "دفع كم" بعد ما اختار السنة، المتبقي يتظبط لوحده برضه */
-$('rgPaid').addEventListener('input', function(){
-  var y=$('rgYear').value;
-  if(!y||rgRemainManual) return;
-  var p=priceForYear(y);
-  var paid=+toLatin(this.value)||0;
-  $('rgRemain').value=Math.max(0,p-paid);
-});
-
-/* بعد التسجيل: نرجّع كل حاجة فاضية */
-$('btnReg').addEventListener('click', function(){
-  setTimeout(function(){ rgRemainManual=false; updateRgHint(); },0);
-});
-
-/* في تعديل طالب: اعرض السعر الجديد بس من غير ما نلمس المتبقي الفعلي (ده دين حقيقي) */
-$('edYear').addEventListener('change', function(){
-  updateEdHint();
-  var y=this.value;
-  if(y) toast('سعر الشهر لسنة '+yearName(y)+': '+money(priceForYear(y))+' — المتبقي الفعلي متغيرش');
-});
-var _openEditOrig=window.openEdit;
-window.openEdit=function(id){ _openEditOrig(id); updateEdHint(); };
-
 updateRgHint();
-/* ========== 24) حذف الامتحان الشامل ========== */
-(function(){
-  var sel = $('emSelect');
-  if(!sel) return;
-
-  /* زر الحذف بيتزرع لوحده جنب قائمة "اختر امتحان" — من غير تعديل HTML */
-  var btn = document.getElementById('btnDelExam');
-  if(!btn){
-    btn = document.createElement('button');
-    btn.id = 'btnDelExam';
-    btn.type = 'button';
-    btn.className = 'btn danger';
-    btn.style.alignSelf = 'flex-end';
-    btn.innerHTML = ic('trash','sm')+' حذف الامتحان';
-    sel.parentNode.insertBefore(btn, sel.nextSibling);
-  }
-
-  function refreshState(){ btn.disabled = !sel.value; }
-
-  btn.onclick = function(){
-    var eid = sel.value;
-    if(!eid){ toast('اختار الامتحان اللي عايز تحذفه الأول'); return; }
-    var em = db.exams.find(function(e){ return e.id===eid; });
-    if(!em) return;
-    if(!confirm('هتحذف امتحان "'+em.title+'" وكل درجاته (بما فيها درجات اللي اتسجلت من شاشة الحضور). متأكد؟')) return;
-    db.exams = db.exams.filter(function(e){ return e.id!==eid; });
-    if(db.examGrades[eid]) delete db.examGrades[eid];
-    save();
-    renderExams();
-    renderExamGrades();
-    refreshExamOptions();
-    refreshState();
-    toast('تم حذف الامتحان: '+em.title);
-  };
-
-  /* خلي الزر مقفول طول ما مفيش امتحان مختار */
-  sel.addEventListener('change', refreshState);
-  var _renderExamsOrig = renderExams;
-  renderExams = function(){ _renderExamsOrig(); refreshState(); };
-  refreshState();
-})();
+bootAuth();
