@@ -1,0 +1,433 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>سنتر مستر اشرف عبدالحليم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<!-- ===== شاشة الدخول ===== -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo"><svg class="ic"><use href="#i-wallet"/></svg></div>
+    <h2>سنتر مستر اشرف عبدالحليم</h2>
+    <p class="muted">سجّل دخول للمتابعة</p>
+    <label>البريد الإلكتروني</label>
+    <input id="lgEmail" type="email" placeholder="name@center.com" autocomplete="username">
+    <label>كلمة المرور</label>
+    <input id="lgPass" type="password" placeholder="••••••••" autocomplete="current-password">
+    <div id="lgErr" class="login-err"></div>
+    <button class="btn primary block" id="btnLogin">تسجيل الدخول</button>
+    <button class="btn ghost block" id="btnLocal" style="margin-top:8px;display:none">دخول محلي بدون سحاب (تجربة)</button>
+    <p class="muted" id="lgNote" style="margin-top:10px"></p>
+  </div>
+</div>
+
+<!-- ===== مكتبة الأيقونات ===== -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></symbol>
+<symbol id="i-user-check" viewBox="0 0 24 24"><path d="M14 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="7.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></symbol>
+<symbol id="i-calendar-check" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></symbol>
+<symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></symbol>
+<symbol id="i-print" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+<symbol id="i-dollar" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+<symbol id="i-xc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+</svg>
+
+<div id="appShell" style="display:none">
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="mark"><svg class="ic"><use href="#i-wallet"/></svg></div>
+      <div><b id="sideCenter">سنتر مستر اشرف عبدالحليم</b><small>نظام إدارة السنتر</small></div>
+    </div>
+    <nav class="sidenav">
+      <button class="navbtn active" data-scr="home"><svg class="ic"><use href="#i-home"/></svg><span>الرئيسية</span></button>
+      <button class="navbtn" data-scr="reg"><svg class="ic"><use href="#i-user-plus"/></svg><span>تسجيل طالب</span></button>
+      <button class="navbtn" data-scr="attend"><svg class="ic"><use href="#i-calendar-check"/></svg><span>الحضور والغياب</span></button>
+      <button class="navbtn" data-scr="students"><svg class="ic"><use href="#i-users"/></svg><span>الطلاب</span></button>
+      <button class="navbtn" data-scr="pay"><svg class="ic"><use href="#i-dollar"/></svg><span>الدفع</span></button>
+      <button class="navbtn" data-scr="treasury"><svg class="ic"><use href="#i-wallet"/></svg><span>الخزنة</span></button>
+      <button class="navbtn" data-scr="expenses"><svg class="ic"><use href="#i-receipt"/></svg><span>المصروفات</span></button>
+      <button class="navbtn" data-scr="assistants"><svg class="ic"><use href="#i-user-check"/></svg><span>الاسيستنت</span></button>
+      <button class="navbtn" data-scr="exams"><svg class="ic"><use href="#i-award"/></svg><span>الامتحانات والدرجات</span></button>
+    </nav>
+  </aside>
+
+  <div class="content">
+    <header class="topbar">
+      <h1 id="pageTitle">الرئيسية</h1>
+      <div class="topgroup">
+        <div class="userchip"><svg class="ic sm"><use href="#i-user-check"/></svg><select id="userSelect"></select></div>
+        <button class="iconbtn" id="btnSettings" title="الإعدادات"><svg class="ic sm"><use href="#i-settings"/></svg></button>
+        <button class="iconbtn" id="btnLogout" title="تسجيل خروج"><svg class="ic sm"><use href="#i-logout"/></svg></button>
+      </div>
+    </header>
+
+    <main>
+      <!-- الرئيسية -->
+      <section id="scr-home" class="screen active">
+        <div class="grid4" style="margin-bottom:16px">
+          <div class="kpi"><div class="kicon k-ok"><svg class="ic"><use href="#i-check"/></svg></div><div><b id="hPresent">0</b><span>حاضر اليوم</span></div></div>
+          <div class="kpi"><div class="kicon k-bad"><svg class="ic"><use href="#i-xc"/></svg></div><div><b id="hAbsent">0</b><span>غايب اليوم</span></div></div>
+          <div class="kpi"><div class="kicon k-in"><svg class="ic"><use href="#i-chart"/></svg></div><div><b id="hNet">0</b><span>صافي الشهر</span></div></div>
+          <div class="kpi"><div class="kicon k-warn"><svg class="ic"><use href="#i-alert"/></svg></div><div><b id="hUnpaid">0</b><span>مش دافعين</span></div></div>
+        </div>
+        <div class="card" style="padding:12px 18px"><b style="font-size:13px">مجموعات النهاردة:</b> <span id="homeGroups" class="muted"></span></div>
+        <div class="grid2">
+          <div class="card"><h3 style="color:var(--danger)"><svg class="ic"><use href="#i-bell"/></svg>غياب 3 مرات أو أكتر</h3><div id="alAbsence"></div></div>
+          <div class="card"><h3 style="color:var(--danger)"><svg class="ic"><use href="#i-xc"/></svg>دورته خلصت ومش دافع</h3><div id="alUnpaidDone"></div></div>
+          <div class="card"><h3 style="color:var(--warn)"><svg class="ic"><use href="#i-clock"/></svg>دورته هتخلص خلال 3 أيام</h3><div id="alEnding"></div></div>
+          <div class="card"><h3 style="color:var(--ok)"><svg class="ic"><use href="#i-award"/></svg>خلّص 8 حصص (يستحق تجديد)</h3><div id="alFull"></div></div>
+        </div>
+      </section>
+
+      <!-- تسجيل طالب -->
+      <section id="scr-reg" class="screen">
+        <div class="card">
+          <h3><svg class="ic"><use href="#i-user-plus"/></svg>تسجيل طالب جديد</h3>
+          <div class="grid3" style="gap:0 14px">
+            <div><label>اسم الطالب *</label><input id="rgName"></div>
+            <div><label>الكود * (انت بتحدده)</label><input id="rgCode"></div>
+            <div><label>المجموعة</label><select id="rgGroup"></select></div>
+            <div><label>السنة</label><select id="rgYear"><option value="">— اختر —</option><option value="1">أولى</option><option value="2">تانية</option><option value="3">تالتة</option></select></div>
+            <div><label>النوع</label><select id="rgType"><option value="">— اختر —</option><option value="ثانوي">ثانوي</option><option value="بكالوريا">بكالوريا</option><option value="أزهر">أزهر</option></select></div>
+            <div><label>جه من امتى؟</label><input type="date" id="rgStart"></div>
+            <div><label>دفع كم</label><input type="number" id="rgPaid" inputmode="numeric"></div>
+            <div><label>مبقي كم</label><input type="number" id="rgRemain" inputmode="numeric"></div>
+            <div><label>المدرسة</label><input id="rgSchool"></div>
+            <div><label>رقم الطالب</label><input id="rgPhone" inputmode="tel"></div>
+            <div><label>رقم ولي الأمر</label><input id="rgParent" inputmode="tel"></div>
+          </div>
+          <label>ملاحظات</label><textarea id="rgNotes" rows="2"></textarea>
+          <p class="muted" style="margin-top:8px">الدورة = شهر من تاريخ البدء = 8 حصص. أي "دفع كم" بيتسجل في الخزنة تلقائيًا.</p>
+          <div class="row"><button class="btn primary" id="btnReg"><svg class="ic sm"><use href="#i-save"/></svg>تسجيل الطالب</button></div>
+        </div>
+      </section>
+
+      <!-- الحضور -->
+      <section id="scr-attend" class="screen">
+        <div class="card" style="padding:12px 18px"><b style="font-size:13px">مجموعات النهاردة:</b> <span id="atTodayGroups" class="muted"></span></div>
+        <div class="card">
+          <div class="bar" style="margin-bottom:0">
+            <div style="flex:1 1 140px"><label style="margin-top:0">التاريخ</label><input type="date" id="atDate"></div>
+            <div style="flex:1 1 150px"><label style="margin-top:0">المجموعة (فلترة)</label><select id="atGroup"><option value="">كل المجموعات</option></select></div>
+            <div style="flex:1 1 150px"><label style="margin-top:0">كود الطالب الحاضر</label><input id="atCode" placeholder="اكتب الكود..."></div>
+            <div style="flex:1 1 100px"><label style="margin-top:0">كويز الحصة</label><input type="number" id="atScore" min="0" max="20" inputmode="decimal"></div>
+            <div style="flex:1 1 140px"><label style="margin-top:0">ملاحظات</label><input id="atNotes"></div>
+          </div>
+          <div class="bar" style="margin:10px 0 0">
+            <div style="flex:1 1 180px"><label style="margin-top:0">الامتحان الكبير (اختياري)</label><select id="atExam"><option value="">— اختر الامتحان —</option></select></div>
+            <div style="flex:1 1 100px"><label style="margin-top:0">درجة الامتحان</label><input type="number" id="atExamScore" inputmode="decimal"></div>
+            <button class="btn primary" id="btnAttend" style="align-self:flex-end"><svg class="ic sm"><use href="#i-check"/></svg>تسجيل حضور</button>
+          </div>
+        </div>
+        <div class="card" style="padding:12px 18px"><div id="atSummary" style="font-weight:700"></div></div>
+        <div class="grid2">
+          <div class="card"><h3><svg class="ic"><use href="#i-check"/></svg>الحاضرين</h3><div id="atPresentList"></div></div>
+          <div class="card"><h3 style="color:var(--danger)"><svg class="ic"><use href="#i-xc"/></svg>الغايبين</h3><div id="atAbsentList"></div></div>
+        </div>
+        <div class="card">
+          <div class="row" style="margin-top:0">
+            <button class="btn danger" id="btnCloseDay"><svg class="ic sm"><use href="#i-check"/></svg>إنهاء اليوم وتثبيت الغياب</button>
+            <button class="btn wa" id="btnWaAbsent"><svg class="ic sm"><use href="#i-send"/></svg>واتساب للغايبين</button>
+            <span class="muted" style="align-self:center">غلق اليوم بيثبت الغياب لكل اللي مش مسجلين.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- الطلاب -->
+      <section id="scr-students" class="screen">
+        <div class="bar">
+          <div style="flex:2;min-width:180px"><label style="margin-top:0">بحث بالاسم أو الكود</label><input id="stSearch" placeholder="اكتب اسم أو كود..."></div>
+          <div style="flex:1;min-width:120px"><label style="margin-top:0">السنة</label><select id="stYearFilter"><option value="">الكل</option><option value="1">أولى</option><option value="2">تانية</option><option value="3">تالتة</option></select></div>
+          <div style="flex:1;min-width:130px"><label style="margin-top:0">النوع</label><select id="stTypeFilter"><option value="">الكل</option><option value="ثانوي">ثانوي</option><option value="بكالوريا">بكالوريا</option><option value="أزهر">أزهر</option></select></div>
+        </div>
+        <div class="card">
+          <div class="table-wrap"><table>
+            <thead><tr><th>الكود</th><th>الاسم</th><th>السنة</th><th>النوع</th><th>المجموعة</th><th>المتبقي</th><th>غياب</th><th></th></tr></thead>
+            <tbody id="stBody"></tbody>
+          </table></div>
+          <div class="pager">
+            <button class="btn sm ghost" id="stuPrev">◀ السابق</button>
+            <span id="stuInfo"></span>
+            <button class="btn sm ghost" id="stuNext">التالي ▶</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- الدفع -->
+      <section id="scr-pay" class="screen">
+        <div class="bar"><div style="flex:2;min-width:180px"><label style="margin-top:0">بحث بالكود أو الاسم</label><input id="paySearch" placeholder="اكتب كود أو اسم..."></div></div>
+        <div class="card" style="padding:12px 18px"><div id="payInfo" class="muted"></div></div>
+        <div class="grid2">
+          <div class="card"><h3 style="color:var(--ok)"><svg class="ic"><use href="#i-check"/></svg>دافعين الدورة الحالية</h3><div id="payPaidList"></div></div>
+          <div class="card"><h3 style="color:var(--danger)"><svg class="ic"><use href="#i-xc"/></svg>مش دافعين</h3><div id="payUnpaidList"></div></div>
+        </div>
+      </section>
+
+      <!-- الخزنة -->
+      <section id="scr-treasury" class="screen">
+        <div class="bar"><div><label style="margin-top:0">الشهر</label><input type="month" id="trMonth"></div></div>
+        <div class="grid3" style="margin-bottom:16px">
+          <div class="kpi"><div class="kicon k-ok"><svg class="ic"><use href="#i-download"/></svg></div><div><b id="trIn">0</b><span>إجمالي داخل</span></div></div>
+          <div class="kpi"><div class="kicon k-bad"><svg class="ic"><use href="#i-upload"/></svg></div><div><b id="trOut">0</b><span>إجمالي خارج</span></div></div>
+          <div class="kpi"><div class="kicon k-in"><svg class="ic"><use href="#i-chart"/></svg></div><div><b id="trNet">0</b><span>الصافي</span></div></div>
+        </div>
+        <div class="grid2">
+          <div class="card"><h3><svg class="ic"><use href="#i-dollar"/></svg>الفلوس راحت فين</h3><div id="trBreakdown"></div></div>
+          <div class="card"><h3><svg class="ic"><use href="#i-clock"/></svg>آخر العمليات</h3>
+            <div class="table-wrap"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>الفئة</th><th>تفاصيل</th><th>المبلغ</th></tr></thead><tbody id="trList"></tbody></table></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- المصروفات -->
+      <section id="scr-expenses" class="screen">
+        <div class="grid2">
+          <div class="card"><h3><svg class="ic"><use href="#i-receipt"/></svg>تسجيل عملية جديدة</h3>
+            <label>نوع العملية</label>
+            <select id="exType"><option value="in">داخل (فلوس جت)</option><option value="out">خارج (مصروف)</option></select>
+            <label>الفئة</label><select id="exCategory"></select>
+            <div id="exStudentWrap" style="display:none"><label>الطالب</label><select id="exStudent"></select></div>
+            <div id="exAssistWrap" style="display:none"><label>اسم الاسيستنت *</label><input id="exAssist" list="assistList" placeholder="اكتب الاسم..."><datalist id="assistList"></datalist></div>
+            <label>المبلغ</label><input type="number" id="exAmount" inputmode="numeric">
+            <label>التاريخ</label><input type="date" id="exDate">
+            <label>ملاحظات</label><input id="exNote">
+            <div class="row"><button class="btn primary block" id="btnAddTr"><svg class="ic sm"><use href="#i-plus"/></svg>تسجيل العملية</button></div>
+          </div>
+          <div class="card"><h3><svg class="ic"><use href="#i-list"/></svg>سجل العمليات</h3>
+            <label>الشهر</label><input type="month" id="exFilterMonth">
+            <div class="table-wrap" style="margin-top:10px"><table>
+              <thead><tr><th>التاريخ</th><th>النوع</th><th>الفئة</th><th>الاسم</th><th>الدورة</th><th>ملاحظات</th><th>المبلغ</th><th></th></tr></thead>
+              <tbody id="exBody"></tbody>
+            </table></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- الاسيستنت -->
+      <section id="scr-assistants" class="screen">
+        <div class="grid2">
+          <div class="card"><h3><svg class="ic"><use href="#i-user-check"/></svg>تسجيل اسيستنت</h3>
+            <input type="hidden" id="asEdit">
+            <label>الاسم *</label><input id="asName">
+            <label>الموبايل</label><input id="asPhone" inputmode="tel">
+            <label>المرتب</label><input type="number" id="asSalary" inputmode="numeric">
+            <div class="row">
+              <button class="btn primary" id="btnAddAs"><svg class="ic sm"><use href="#i-plus"/></svg>إضافة / حفظ</button>
+              <button class="btn ghost" id="btnAsCancel" style="display:none">إلغاء التعديل</button>
+            </div>
+          </div>
+          <div class="card"><h3><svg class="ic"><use href="#i-users"/></svg>قائمة الاسيستنت</h3>
+            <div class="table-wrap"><table><thead><tr><th>الاسم</th><th>الموبايل</th><th>المرتب</th><th></th></tr></thead><tbody id="asBody"></tbody></table></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- الامتحانات -->
+      <section id="scr-exams" class="screen">
+        <div class="card"><h3><svg class="ic"><use href="#i-award"/></svg>إنشاء امتحان شامل</h3>
+          <div class="bar" style="margin-bottom:0">
+            <div style="flex:2;min-width:160px"><label style="margin-top:0">اسم الامتحان</label><input id="emTitle"></div>
+            <div style="flex:1;min-width:130px"><label style="margin-top:0">التاريخ</label><input type="date" id="emDate"></div>
+            <div style="flex:1;min-width:100px"><label style="margin-top:0">الدرجة الكلية</label><input type="number" id="emMax" value="100" inputmode="numeric"></div>
+            <button class="btn primary" id="btnAddExam" style="align-self:flex-end"><svg class="ic sm"><use href="#i-plus"/></svg>إنشاء</button>
+            <div style="flex:1;min-width:150px"><label style="margin-top:0">اختر امتحان</label><select id="emSelect"><option value="">— اختر —</option></select></div>
+          </div>
+        </div>
+        <div class="card"><h3><svg class="ic"><use href="#i-edit"/></svg>رصد درجات + ملاحظات</h3>
+          <div class="table-wrap"><table><thead><tr><th>الكود</th><th>الاسم</th><th style="width:110px">الدرجة</th><th>ملاحظة</th></tr></thead><tbody id="emBody"></tbody></table></div>
+          <div class="row"><button class="btn primary" id="btnSaveGrades"><svg class="ic sm"><use href="#i-save"/></svg>حفظ الدرجات</button></div>
+        </div>
+        <div class="card">
+          <h3><svg class="ic"><use href="#i-chart"/></svg>تحليل الكويزات (كل كويز من 20)</h3>
+          <div class="grid4" style="margin-bottom:12px">
+            <div class="kpi"><div class="kicon k-in"><svg class="ic"><use href="#i-list"/></svg></div><div><b id="qzCount">0</b><span>كويز مسجل</span></div></div>
+            <div class="kpi"><div class="kicon k-ok"><svg class="ic"><use href="#i-chart"/></svg></div><div><b id="qzAvg">—</b><span>المتوسط العام / 20</span></div></div>
+            <div class="kpi"><div class="kicon k-ok"><svg class="ic"><use href="#i-award"/></svg></div><div><b id="qzHigh">—</b><span>أعلى متوسط طالب</span></div></div>
+            <div class="kpi"><div class="kicon k-bad"><svg class="ic"><use href="#i-xc"/></svg></div><div><b id="qzLow">—</b><span>أقل متوسط طالب</span></div></div>
+          </div>
+          <div class="bar" style="margin:0 0 10px">
+            <div style="flex:1;min-width:200px"><label style="margin-top:0">طريقة عرض الرسمة</label>
+              <select id="chartMode">
+                <option value="student">متوسط كل طالب</option>
+                <option value="session">متوسط كل حصة بالتاريخ</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="quizChart"></canvas></div>
+        </div>
+        <div class="card"><h3><svg class="ic"><use href="#i-chart"/></svg>إحصائيات الدرجات</h3>
+          <div class="table-wrap"><table>
+            <thead><tr><th>الكود</th><th>الاسم</th><th>متوسط كويز</th><th>آخر امتحان</th><th>النسبة</th><th>التقدير</th></tr></thead>
+            <tbody id="emStatsBody"></tbody>
+          </table></div>
+          <div class="row"><button class="btn ghost sm" id="btnPrintStats"><svg class="ic sm"><use href="#i-print"/></svg>طباعة الإحصائيات</button></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer"><span>© 2026 Ahmed Elarby . All rights reserved.</span></footer>
+  </div>
+</div>
+
+<nav class="bottomnav">
+  <button class="bnavbtn active" data-scr="home"><svg class="ic"><use href="#i-home"/></svg><span>الرئيسية</span></button>
+  <button class="bnavbtn" data-scr="reg"><svg class="ic"><use href="#i-user-plus"/></svg><span>طالب</span></button>
+  <button class="bnavbtn" data-scr="attend"><svg class="ic"><use href="#i-calendar-check"/></svg><span>حضور</span></button>
+  <button class="bnavbtn" data-scr="students"><svg class="ic"><use href="#i-users"/></svg><span>الطلاب</span></button>
+  <button class="bnavbtn" data-scr="pay"><svg class="ic"><use href="#i-dollar"/></svg><span>الدفع</span></button>
+  <button class="bnavbtn" data-scr="treasury"><svg class="ic"><use href="#i-wallet"/></svg><span>الخزنة</span></button>
+  <button class="bnavbtn" data-scr="expenses"><svg class="ic"><use href="#i-receipt"/></svg><span>مصروفات</span></button>
+  <button class="bnavbtn" data-scr="assistants"><svg class="ic"><use href="#i-user-check"/></svg><span>اسيستنت</span></button>
+  <button class="bnavbtn" data-scr="exams"><svg class="ic"><use href="#i-award"/></svg><span>امتحانات</span></button>
+</nav>
+</div><!-- /appShell -->
+
+<!-- المودالات -->
+<div class="overlay" id="mProfile"><div class="modal" style="max-width:700px"><div id="profileBox"></div></div></div>
+
+<div class="overlay" id="mEdit"><div class="modal" style="max-width:700px">
+  <h3><svg class="ic"><use href="#i-edit"/></svg>تعديل بيانات الطالب</h3>
+  <input type="hidden" id="edId">
+  <div class="grid2" style="gap:0 14px">
+    <div><label>الاسم</label><input id="edName"></div>
+    <div><label>الكود</label><input id="edCode"></div>
+    <div><label>المجموعة</label><select id="edGroup"></select></div>
+    <div><label>السنة</label><select id="edYear"><option value="">— اختر —</option><option value="1">أولى</option><option value="2">تانية</option><option value="3">تالتة</option></select></div>
+    <div><label>النوع</label><select id="edType"><option value="">— اختر —</option><option value="ثانوي">ثانوي</option><option value="بكالوريا">بكالوريا</option><option value="أزهر">أزهر</option></select></div>
+    <div><label>جه من امتى؟</label><input type="date" id="edStart"></div>
+    <div><label>دفع كم</label><input type="number" id="edPaid"></div>
+    <div><label>مبقي كم</label><input type="number" id="edRemain"></div>
+    <div><label>الحالة</label><select id="edStatus"><option value="active">مستمر</option><option value="frozen">مجمد</option><option value="stopped">وقف</option></select></div>
+    <div><label>تجميد من</label><input type="date" id="edFreezeFrom"></div>
+    <div><label>تجميد إلى</label><input type="date" id="edFreezeTo"></div>
+    <div><label>المدرسة</label><input id="edSchool"></div>
+    <div><label>رقم الطالب</label><input id="edPhone"></div>
+    <div><label>رقم ولي الأمر</label><input id="edParent"></div>
+  </div>
+  <label>ملاحظات</label><textarea id="edNotes" rows="2"></textarea>
+  <div class="row"><button class="btn primary" id="btnSaveEdit"><svg class="ic sm"><use href="#i-save"/></svg>حفظ التعديلات</button><button class="btn ghost" data-close>إلغاء</button></div>
+</div></div>
+
+<div class="overlay" id="mSessions"><div class="modal" style="max-width:640px">
+  <h3 id="sesTitle"><svg class="ic"><use href="#i-calendar-check"/></svg>تعديل الحصص والكويزات</h3>
+  <div id="sesList"></div>
+  <h4>إضافة حصة / كويز</h4>
+  <div class="bar" style="margin-bottom:0">
+    <div style="flex:1 1 140px"><label style="margin-top:0">التاريخ</label><input type="date" id="sesDate"></div>
+    <div style="flex:1 1 100px"><label style="margin-top:0">الدرجة</label><input type="number" id="sesScore" min="0" max="20" inputmode="decimal"></div>
+    <div style="flex:1 1 140px"><label style="margin-top:0">ملاحظة</label><input id="sesNotes"></div>
+    <button class="btn primary" id="btnAddSession" style="align-self:flex-end"><svg class="ic sm"><use href="#i-plus"/></svg>إضافة</button>
+  </div>
+  <div class="row"><button class="btn ghost" data-close>إغلاق</button></div>
+</div></div>
+
+<div class="overlay" id="mPay"><div class="modal" style="max-width:420px">
+  <h3><svg class="ic"><use href="#i-dollar"/></svg>تسجيل دفع</h3>
+  <div class="kv"><span>الطالب</span><b id="payName"></b></div>
+  <div class="kv"><span>الدورة</span><b id="payCycle"></b></div>
+  <label>المبلغ</label><input type="number" id="payAmount" inputmode="numeric">
+  <label>ملاحظات</label><input id="payNote" placeholder="مثلاً: دفع كاش...">
+  <div class="row">
+    <button class="btn primary" id="btnConfirmPay"><svg class="ic sm"><use href="#i-check"/></svg>تأكيد الدفع</button>
+    <button class="btn ghost" data-close>إلغاء</button>
+  </div>
+</div></div>
+
+<div class="overlay" id="mWa"><div class="modal" style="max-width:520px">
+  <h3><svg class="ic" style="color:var(--wa)"><use href="#i-send"/></svg>رسائل الغياب جاهزة</h3>
+  <div id="waList"></div>
+  <div class="row"><button class="btn ghost" data-close>إغلاق</button></div>
+</div></div>
+
+<div class="overlay" id="mSettings"><div class="modal">
+  <h3><svg class="ic"><use href="#i-settings"/></svg>الإعدادات</h3>
+  <label>اسم السنتر</label><input id="setCenter">
+  <label>اسم المدرس</label><input id="setTeacher">
+  <div class="grid2" style="gap:10px">
+    <div><label>سعر الشهر — أولى</label><input type="number" id="setP1"></div>
+    <div><label>سعر الشهر — تانية</label><input type="number" id="setP2"></div>
+    <div><label>سعر الشهر — تالتة</label><input type="number" id="setP3"></div>
+    <div><label>سعر افتراضي</label><input type="number" id="setPrice"></div>
+    <div><label>رقم واتساب السنتر</label><input id="setWa" placeholder="2010xxxxxxxx"></div>
+  </div>
+  <h4>المجموعات (أيام الحصص ومواعيدها)</h4>
+  <input type="hidden" id="gEditId">
+  <label>اسم المجموعة</label><input id="gName" placeholder="مثلاً: تالتة ثانوي أ">
+  <div class="grid3" style="gap:8px">
+    <div><label>يوم الحصة 1 *</label><select id="gDay1"></select></div>
+    <div><label>ميعادها 1 *</label><input id="gTime1" placeholder="6م" inputmode="numeric"></div>
+    <div></div>
+    <div><label>يوم الحصة 2 (اختياري)</label><select id="gDay2"></select></div>
+    <div><label>ميعادها 2</label><input id="gTime2" placeholder="8م" inputmode="numeric"></div>
+    <div></div>
+    <div><label>يوم الحصة 3 (اختياري)</label><select id="gDay3"></select></div>
+    <div><label>ميعادها 3</label><input id="gTime3" placeholder="10م" inputmode="numeric"></div>
+    <div></div>
+  </div>
+  <div class="row">
+    <button class="btn primary" id="btnSaveGroup"><svg class="ic sm"><use href="#i-plus"/></svg>إضافة المجموعة</button>
+    <button class="btn ghost" id="btnGroupCancelEdit" style="display:none">إلغاء التعديل</button>
+  </div>
+  <div id="groupsList" style="margin-top:10px"></div>
+  <h4>النسخ السحابي (احتياطي يدوي — الحفظ تلقائي بالفعل)</h4>
+  <div class="row" style="margin-top:0">
+    <button class="btn ghost sm" id="btnCloudPush"><svg class="ic sm"><use href="#i-upload"/></svg>رفع الآن</button>
+    <button class="btn ghost sm" id="btnCloudPull"><svg class="ic sm"><use href="#i-download"/></svg>سحب الآن</button>
+    <span class="muted" id="cloudStatus"></span>
+  </div>
+  <h4>تصدير CSV (Excel)</h4>
+  <div class="row" style="margin-top:0">
+    <button class="btn ghost sm" id="btnCsvStudents"><svg class="ic sm"><use href="#i-download"/></svg>CSV الطلاب</button>
+    <button class="btn ghost sm" id="btnCsvTreasury"><svg class="ic sm"><use href="#i-download"/></svg>CSV الخزنة</button>
+    <button class="btn ghost sm" id="btnCsvGrades"><svg class="ic sm"><use href="#i-download"/></svg>CSV الدرجات</button>
+  </div>
+  <div class="row">
+    <button class="btn primary" id="btnSaveSettings"><svg class="ic sm"><use href="#i-save"/></svg>حفظ الإعدادات</button>
+    <button class="btn ghost" id="btnExport"><svg class="ic sm"><use href="#i-download"/></svg>نسخة JSON</button>
+    <button class="btn ghost" id="btnImportClick"><svg class="ic sm"><use href="#i-upload"/></svg>استيراد</button>
+    <input type="file" id="btnImport" accept=".json" style="display:none">
+    <button class="btn danger" id="btnWipe"><svg class="ic sm"><use href="#i-trash"/></svg>مسح الكل</button>
+    <button class="btn ghost" data-close>إغلاق</button>
+  </div>
+</div></div>
+
+<div id="printArea"></div>
+<div id="toast"></div>
+<div id="errbar"></div>
+
+<script src="fb-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
