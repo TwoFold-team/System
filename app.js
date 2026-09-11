@@ -1014,3 +1014,112 @@ window.payMore=payMore;
 /* بدء التشغيل */
 fillDaySelects();
 bootAuth();
+/* ========== 23) تحديد سعر الشهر تلقائيًا حسب السنة ========== */
+function priceForYear(y){
+  var s=db.settings;
+  if(y==='1') return (+s.p1||0);
+  if(y==='2') return (+s.p2||0);
+  if(y==='3') return (+s.p3||0);
+  return (+s.monthlyPrice||0);
+}
+function yearName(y){ return y==='1'?'أولى':(y==='2'?'تانية':(y==='3'?'تالتة':'')); }
+function priceHintEl(selEl, id){
+  var el=document.getElementById(id);
+  if(!el){
+    el=document.createElement('div');
+    el.id=id; el.className='muted';
+    el.style.marginTop='4px'; el.style.fontWeight='700'; el.style.color='var(--p)';
+    selEl.parentNode.insertBefore(el, selEl.nextSibling);
+  }
+  return el;
+}
+function updateRgHint(){
+  var y=$('rgYear').value, el=priceHintEl($('rgYear'),'rgPriceHint');
+  el.textContent = y ? ('سعر الشهر لسنة '+yearName(y)+': '+money(priceForYear(y))) : '';
+}
+function updateEdHint(){
+  var y=$('edYear').value, el=priceHintEl($('edYear'),'edPriceHint');
+  el.textContent = y ? ('سعر الشهر لسنة '+yearName(y)+': '+money(priceForYear(y))) : '';
+}
+
+var rgRemainManual=false;
+/* لو عدّل المتبقي بإيده، مبطلناش نلغبطه */
+$('rgRemain').addEventListener('input', function(){ rgRemainManual=true; });
+
+/* أول ما يختار السنة: المتبقي = سعر شهر السنة دي − اللي دفعه */
+$('rgYear').addEventListener('change', function(){
+  rgRemainManual=false;
+  updateRgHint();
+  var y=this.value; if(!y) return;
+  var p=priceForYear(y);
+  var paid=+toLatin($('rgPaid').value)||0;
+  var rem=Math.max(0,p-paid);
+  $('rgRemain').value=rem;
+  toast('سعر شهر '+yearName(y)+' = '+money(p)+' — المتبقي اتحدد تلقائيًا');
+});
+
+/* لو كتب "دفع كم" بعد ما اختار السنة، المتبقي يتظبط لوحده برضه */
+$('rgPaid').addEventListener('input', function(){
+  var y=$('rgYear').value;
+  if(!y||rgRemainManual) return;
+  var p=priceForYear(y);
+  var paid=+toLatin(this.value)||0;
+  $('rgRemain').value=Math.max(0,p-paid);
+});
+
+/* بعد التسجيل: نرجّع كل حاجة فاضية */
+$('btnReg').addEventListener('click', function(){
+  setTimeout(function(){ rgRemainManual=false; updateRgHint(); },0);
+});
+
+/* في تعديل طالب: اعرض السعر الجديد بس من غير ما نلمس المتبقي الفعلي (ده دين حقيقي) */
+$('edYear').addEventListener('change', function(){
+  updateEdHint();
+  var y=this.value;
+  if(y) toast('سعر الشهر لسنة '+yearName(y)+': '+money(priceForYear(y))+' — المتبقي الفعلي متغيرش');
+});
+var _openEditOrig=window.openEdit;
+window.openEdit=function(id){ _openEditOrig(id); updateEdHint(); };
+
+updateRgHint();
+/* ========== 24) حذف الامتحان الشامل ========== */
+(function(){
+  var sel = $('emSelect');
+  if(!sel) return;
+
+  /* زر الحذف بيتزرع لوحده جنب قائمة "اختر امتحان" — من غير تعديل HTML */
+  var btn = document.getElementById('btnDelExam');
+  if(!btn){
+    btn = document.createElement('button');
+    btn.id = 'btnDelExam';
+    btn.type = 'button';
+    btn.className = 'btn danger';
+    btn.style.alignSelf = 'flex-end';
+    btn.innerHTML = ic('trash','sm')+' حذف الامتحان';
+    sel.parentNode.insertBefore(btn, sel.nextSibling);
+  }
+
+  function refreshState(){ btn.disabled = !sel.value; }
+
+  btn.onclick = function(){
+    var eid = sel.value;
+    if(!eid){ toast('اختار الامتحان اللي عايز تحذفه الأول'); return; }
+    var em = db.exams.find(function(e){ return e.id===eid; });
+    if(!em) return;
+    if(!confirm('هتحذف امتحان "'+em.title+'" وكل درجاته (بما فيها درجات اللي اتسجلت من شاشة الحضور). متأكد؟')) return;
+    db.exams = db.exams.filter(function(e){ return e.id!==eid; });
+    if(db.examGrades[eid]) delete db.examGrades[eid];
+    save();
+    renderExams();
+    renderExamGrades();
+    refreshExamOptions();
+    refreshState();
+    toast('تم حذف الامتحان: '+em.title);
+  };
+
+  /* خلي الزر مقفول طول ما مفيش امتحان مختار */
+  sel.addEventListener('change', refreshState);
+  var _renderExamsOrig = renderExams;
+  renderExams = function(){ _renderExamsOrig(); refreshState(); };
+  refreshState();
+})();
